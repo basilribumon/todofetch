@@ -1,72 +1,49 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-export const fetchTodos = createAsyncThunk(
-  "todo/fetchTodos",
-  async () => {
-    const response = await fetch(
-      "https://jsonplaceholder.typicode.com/todos?_limit=10"
-    );
+const fetchTodos = async () => {
+  const response = await fetch(
+    "https://jsonplaceholder.typicode.com/todos?_limit=10"
+  );
+  return response.json();
+};
 
-    return response.json();
-  }
-);
+function Todos() {
+  const [showCompleted, setShowCompleted] = useState(false);
 
-const todoSlice = createSlice({
-  name: "todo",
-  initialState: {
-    todos: [],
-    loading: false,
-    error: null,
-  },
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["todos"],
+    queryFn: fetchTodos,
+  });
 
-  reducers: {
-    addTodo: (state, action) => {
-      state.todos.push({
-        id: Date.now(),
-        title: action.payload,
-        completed: false,
-      });
-    },
+  if (isLoading) return <h2>Loading...</h2>;
+  if (error) return <h2>Error!</h2>;
 
-    deleteTodo: (state, action) => {
-      state.todos = state.todos.filter(
-        (todo) => todo.id !== action.payload
-      );
-    },
+  const filteredTodos = showCompleted
+    ? data.filter((todo) => todo.completed)
+    : data;
 
-    toggleTodo: (state, action) => {
-      const todo = state.todos.find(
-        (todo) => todo.id === action.payload
-      );
+  return (
+    <div>
+      <h1>Todo List</h1>
 
-      if (todo) {
-        todo.completed = !todo.completed;
-      }
-    },
-  },
+      <button
+        onClick={() => setShowCompleted(!showCompleted)}
+      >
+        {showCompleted ? "Show All" : "Show Completed"}
+      </button>
 
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchTodos.pending, (state) => {
-        state.loading = true;
-      })
+      {filteredTodos.map((todo) => (
+        <div key={todo.id}>
+          <p>
+            <strong>{todo.title}</strong>
+          </p>
+          <p>Completed: {todo.completed ? "✅ Yes" : "❌ No"}</p>
+          <hr />
+        </div>
+      ))}
+    </div>
+  );
+}
 
-      .addCase(fetchTodos.fulfilled, (state, action) => {
-        state.loading = false;
-        state.todos = action.payload;
-      })
-
-      .addCase(fetchTodos.rejected, (state) => {
-        state.loading = false;
-        state.error = "Failed to fetch";
-      });
-  },
-});
-
-export const {
-  addTodo,
-  deleteTodo,
-  toggleTodo,
-} = todoSlice.actions;
-
-export default todoSlice.reducer;
+export default Todos;
